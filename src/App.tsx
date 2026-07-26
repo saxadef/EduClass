@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import StudentPortal from './pages/StudentPortal';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
@@ -11,7 +11,7 @@ import AdminSettings from './pages/AdminSettings';
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Routes>
         {/* Public Student Submission Portal */}
         <Route path="/" element={<StudentPortal />} />
@@ -40,6 +40,6 @@ export default function App() {
         {/* Catch-all fallback redirect */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
