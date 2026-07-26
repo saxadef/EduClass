@@ -112,11 +112,6 @@ export default function AdminLogin() {
             </div>
           </form>
  
-          <div className="mt-6 border-t border-neutral-150 pt-4 text-center">
-            <p className="text-xs text-neutral-500">
-              Untuk akses mode demo, gunakan nama pengguna <strong className="text-neutral-700">admin</strong> dan kata sandi <strong className="text-neutral-700">admin123</strong>
-            </p>
-          </div>
         </div>
       </div>
     </div>
