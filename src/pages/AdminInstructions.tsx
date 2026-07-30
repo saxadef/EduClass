@@ -4,7 +4,7 @@ import AdminLayout from '../components/AdminLayout';
 import RichTextEditor from '../components/RichTextEditor';
 import { ApiClient } from '../lib/api';
 import { Class, Section, Instruction, DriveFile } from '../types';
-import { sanitizeHtml } from '../lib/utils';
+import { sanitizeHtml, parseYoutubeLink, getYoutubeEmbedUrl } from '../lib/utils';
 import { SectionActions, InstructionActions } from '../components/ActionButtons';
 import ConfirmModal from '../components/ConfirmModal';
 import { FileIcon } from '../components/FileIcon';
@@ -40,7 +40,8 @@ export default function AdminInstructions() {
     publish_at: '',
     due_at: '',
     submission_enabled: true,
-    status: 'DRAFT' as 'DRAFT' | 'PUBLISHED' | 'ARCHIVED'
+    status: 'DRAFT' as 'DRAFT' | 'PUBLISHED' | 'ARCHIVED',
+    youtube_link: ''
   });
 
   const [showInstForm, setShowInstForm] = useState(false);
@@ -52,7 +53,8 @@ export default function AdminInstructions() {
     attachment_name: '',
     attachment_mime_type: '',
     attachment_file_id: '',
-    status: 'PUBLISHED'
+    status: 'PUBLISHED',
+    youtube_link: ''
   });
 
   // Base64 helper for attachment upload simulation
@@ -218,21 +220,24 @@ export default function AdminInstructions() {
       publish_at: new Date().toISOString().substring(0, 16),
       due_at: new Date(Date.now() + 86400000 * 7).toISOString().substring(0, 16), // 7 days later
       submission_enabled: true,
-      status: 'DRAFT'
+      status: 'DRAFT',
+      youtube_link: ''
     });
     setShowSectionForm(true);
   };
 
   const handleOpenEditSection = (sec: Section) => {
     setEditingSection(sec);
+    const parsed = parseYoutubeLink(sec.description || '');
     setSectionForm({
       class_id: sec.class_id,
       section_name: sec.section_name,
-      description: sec.description,
+      description: parsed.cleanText,
       publish_at: sec.publish_at ? new Date(sec.publish_at).toISOString().substring(0, 16) : '',
       due_at: sec.due_at ? new Date(sec.due_at).toISOString().substring(0, 16) : '',
       submission_enabled: sec.submission_enabled,
-      status: sec.status
+      status: sec.status,
+      youtube_link: parsed.youtubeLink
     });
     setShowSectionForm(true);
   };
@@ -246,10 +251,16 @@ export default function AdminInstructions() {
       const pubDate = sectionForm.publish_at ? new Date(sectionForm.publish_at).toISOString() : '';
       const dueDate = sectionForm.due_at ? new Date(sectionForm.due_at).toISOString() : '';
 
+      // Append YouTube link if present
+      let finalDescription = sectionForm.description;
+      if (sectionForm.youtube_link && sectionForm.youtube_link.trim()) {
+        finalDescription = `${sectionForm.description.trim()} ||YT_LINK:${sectionForm.youtube_link.trim()}||`;
+      }
+
       const payload = {
         class_id: sectionForm.class_id,
         section_name: sectionForm.section_name,
-        description: sectionForm.description,
+        description: finalDescription,
         publish_at: pubDate,
         due_at: dueDate,
         submission_enabled: sectionForm.submission_enabled,
@@ -322,7 +333,8 @@ export default function AdminInstructions() {
       attachment_name: '',
       attachment_mime_type: '',
       attachment_file_id: '',
-      status: 'PUBLISHED'
+      status: 'PUBLISHED',
+      youtube_link: ''
     });
     setAttachmentFile(null);
     setShowInstForm(true);
@@ -331,13 +343,15 @@ export default function AdminInstructions() {
   const handleOpenEditInst = (inst: Instruction) => {
     setEditingInst(inst);
     setInstSectionId(inst.section_id);
+    const parsed = parseYoutubeLink(inst.content_html || '');
     setInstForm({
       title: inst.title,
-      content_html: inst.content_html,
+      content_html: parsed.cleanText,
       attachment_name: inst.attachment_name,
       attachment_mime_type: inst.attachment_mime_type,
       attachment_file_id: inst.attachment_file_id,
-      status: inst.status
+      status: inst.status,
+      youtube_link: parsed.youtubeLink
     });
     setAttachmentFile(null);
     setShowInstForm(true);
@@ -355,10 +369,15 @@ export default function AdminInstructions() {
     setSuccessMessage('');
     setUploadingAttachment(true);
     try {
+      let finalContentHtml = instForm.content_html;
+      if (instForm.youtube_link && instForm.youtube_link.trim()) {
+        finalContentHtml = `${instForm.content_html.trim()} ||YT_LINK:${instForm.youtube_link.trim()}||`;
+      }
+
       const payload = {
         section_id: instSectionId,
         title: instForm.title,
-        content_html: instForm.content_html,
+        content_html: finalContentHtml,
         status: instForm.status,
         attachment_name: instForm.attachment_name,
         attachment_mime_type: instForm.attachment_mime_type,
@@ -605,6 +624,18 @@ export default function AdminInstructions() {
                   />
                 </div>
 
+                <div>
+                  <label className="block text-xs font-bold uppercase text-neutral-500 tracking-wider">Link Video YouTube (Opsional)</label>
+                  <input
+                    type="url"
+                    placeholder="contoh: https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                    className="mt-1 block w-full p-2 border border-neutral-300 rounded-lg text-sm"
+                    value={sectionForm.youtube_link}
+                    onChange={(e) => setSectionForm({ ...sectionForm, youtube_link: e.target.value })}
+                  />
+                  <p className="text-[10px] text-neutral-400 mt-1">Siswa dapat langsung menonton video instruksi ini di portal mereka.</p>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold uppercase text-neutral-500 tracking-wider">Dipublikasikan Pada</label>
@@ -705,6 +736,18 @@ export default function AdminInstructions() {
                     value={instForm.content_html}
                     onChange={(html) => setInstForm({ ...instForm, content_html: html })}
                   />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase text-neutral-500 tracking-wider">Link Video YouTube (Opsional)</label>
+                  <input
+                    type="url"
+                    placeholder="contoh: https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                    className="mt-1 block w-full p-2 border border-neutral-300 rounded-lg text-sm"
+                    value={instForm.youtube_link}
+                    onChange={(e) => setInstForm({ ...instForm, youtube_link: e.target.value })}
+                  />
+                  <p className="text-[10px] text-neutral-400 mt-1">Siswa dapat melihat/menonton video pendukung atau instruksi ini langsung di portal mereka.</p>
                 </div>
 
                 <div className="border border-neutral-200 rounded-lg p-4 bg-neutral-50 space-y-4">

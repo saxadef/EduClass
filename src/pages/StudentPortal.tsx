@@ -1,15 +1,16 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Upload, FileText, CheckCircle, ArrowRight, ShieldCheck, Download, AlertCircle, Info, RefreshCw, LogIn } from 'lucide-react';
+import { Upload, FileText, CheckCircle, ArrowRight, ShieldCheck, Download, AlertCircle, Info, RefreshCw, LogIn, LayoutDashboard, Link2 } from 'lucide-react';
 import { ApiClient } from '../lib/api';
-import { Class, Section, Instruction } from '../types';
-import { sanitizeHtml, sanitizeFileName, isSafeFileExtension, sanitizeStudentName } from '../lib/utils';
+import { Class, Section, Instruction, Student } from '../types';
+import { sanitizeHtml, sanitizeFileName, isSafeFileExtension, sanitizeStudentName, parseYoutubeLink, getYoutubeEmbedUrl, encodeSubmissionLink, decodeSubmissionLink } from '../lib/utils';
 import { FileIcon } from '../components/FileIcon';
 
 export default function StudentPortal() {
   const [classes, setClasses] = useState<Class[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
   const [instructions, setInstructions] = useState<Instruction[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Helper to parse attachments
@@ -29,6 +30,10 @@ export default function StudentPortal() {
   const [selectedClassId, setSelectedClassId] = useState('');
   const [selectedSectionId, setSelectedSectionId] = useState('');
   const [fullName, setFullName] = useState('');
+  const [selectedStudentId, setSelectedStudentId] = useState('');
+  const [isManualName, setIsManualName] = useState(false);
+  const [submissionType, setSubmissionType] = useState<'file' | 'link'>('file');
+  const [linkUrl, setLinkUrl] = useState('');
   const [file, setFile] = useState<File | null>(null);
 
   // Status and submission state
@@ -48,14 +53,16 @@ export default function StudentPortal() {
   useEffect(() => {
     async function loadPortalData() {
       try {
-        const [cls, secs, insts] = await Promise.all([
+        const [cls, secs, insts, stds] = await Promise.all([
           ApiClient.getClasses(),
           ApiClient.getPublicSections(),
-          ApiClient.getPublicInstructions()
+          ApiClient.getPublicInstructions(),
+          ApiClient.getStudents()
         ]);
         setClasses(cls);
         setSections(secs);
         setInstructions(insts);
+        setStudents(stds);
 
         if (cls.length > 0) {
           setSelectedClassId(cls[0].class_id);
@@ -105,6 +112,9 @@ export default function StudentPortal() {
   // Filter sections matching currently selected Class
   const activeClassSections = sections.filter(s => s.class_id === selectedClassId && s.status === 'PUBLISHED');
 
+  // Filter students matching currently selected Class
+  const activeClassStudents = students.filter(s => s.class_id === selectedClassId);
+
   // Trigger default selection when Class changes
   useEffect(() => {
     if (activeClassSections.length > 0) {
@@ -113,6 +123,17 @@ export default function StudentPortal() {
       setSelectedSectionId('');
     }
   }, [selectedClassId, sections]);
+
+  // Reset student dropdown state when Class changes
+  useEffect(() => {
+    setSelectedStudentId('');
+    setFullName('');
+    if (activeClassStudents.length === 0) {
+      setIsManualName(true);
+    } else {
+      setIsManualName(false);
+    }
+  }, [selectedClassId, students]);
 
   // Find active assignment instructions
   const activeSectionObj = sections.find(s => s.section_id === selectedSectionId);
@@ -205,49 +226,90 @@ export default function StudentPortal() {
       }
     }
     
-    // 2. Security Check: Sanitize student full name inputs
-    const cleanFullName = sanitizeStudentName(fullName);
-    if (!cleanFullName) {
-      setErrorMessage('Silakan masukkan nama siswa yang valid (hanya menggunakan huruf, spasi, tanda hubung, dan titik).');
-      return;
+    // Determine student full name (either from database selection or manual input fallback)
+    let cleanFullName = '';
+    if (activeClassStudents.length > 0 && !isManualName) {
+      if (!selectedStudentId) {
+        setErrorMessage('Silakan pilih nama lengkap Anda dari daftar siswa kelas.');
+        return;
+      }
+      const matchedStd = activeClassStudents.find(s => s.student_id === selectedStudentId);
+      if (matchedStd) {
+        cleanFullName = sanitizeStudentName(matchedStd.full_name);
+      }
+    } else {
+      cleanFullName = sanitizeStudentName(fullName);
     }
-    
-    if (!file) {
-      setErrorMessage('Silakan pilih atau letakkan file tugas Anda.');
+
+    if (!cleanFullName) {
+      setErrorMessage('Silakan masukkan atau pilih nama siswa yang valid (hanya menggunakan huruf, spasi, tanda hubung, dan titik).');
       return;
     }
 
-    // 3. Security Check: Sanitize and validate final filename
-    const cleanFileName = sanitizeFileName(file.name);
-    if (!isSafeFileExtension(cleanFileName)) {
-      setErrorMessage('Peringatan Keamanan: Ekstensi file dilarang.');
-      return;
+    let finalFileName = '';
+    let finalBase64 = '';
+    let finalMimeType = '';
+    let finalFileSize = 0;
+
+    if (submissionType === 'link') {
+      if (!linkUrl || !linkUrl.trim()) {
+        setErrorMessage('Silakan masukkan URL / Link video pengumpulan tugas Anda.');
+        return;
+      }
+      
+      const trimmedUrl = linkUrl.trim();
+      if (!trimmedUrl.startsWith('http://') && !trimmedUrl.startsWith('https://')) {
+        setErrorMessage('Tautan tidak valid. Pastikan link diawali dengan http:// atau https:// (contoh: https://www.youtube.com/watch?v=...)');
+        return;
+      }
+
+      finalFileName = encodeSubmissionLink(trimmedUrl, cleanFullName);
+      finalBase64 = btoa(trimmedUrl);
+      finalMimeType = 'text/plain';
+      finalFileSize = trimmedUrl.length;
+    } else {
+      if (!file) {
+        setErrorMessage('Silakan pilih atau letakkan file tugas Anda.');
+        return;
+      }
+
+      // Security Check: Sanitize and validate final filename
+      const cleanFileName = sanitizeFileName(file.name);
+      if (!isSafeFileExtension(cleanFileName)) {
+        setErrorMessage('Peringatan Keamanan: Ekstensi file dilarang.');
+        return;
+      }
+
+      finalFileName = cleanFileName;
+      finalBase64 = await fileToBase64(file);
+      finalMimeType = file.type || 'application/octet-stream';
+      finalFileSize = file.size;
     }
 
     setSubmitting(true);
     setErrorMessage('');
 
     try {
-      const base64Data = await fileToBase64(file);
-      
       const res = await ApiClient.submitAssignment({
         classId: selectedClassId,
         sectionId: selectedSectionId,
         fullName: cleanFullName,
-        fileName: cleanFileName,
-        fileSize: file.size,
-        mimeType: file.type || 'application/octet-stream',
-        fileBase64: base64Data
+        fileName: finalFileName,
+        fileSize: finalFileSize,
+        mimeType: finalMimeType,
+        fileBase64: finalBase64
       });
 
       setSuccessData({
         submissionId: res.submission_id,
-        fileName: res.current_filename,
+        fileName: submissionType === 'link' ? 'Tautan Video Tugas (' + linkUrl.substring(0, 30) + '...)' : res.current_filename,
         timestamp: res.timestamp
       });
 
       // Reset fields
       setFullName('');
+      setSelectedStudentId('');
+      setLinkUrl('');
       setFile(null);
     } catch (err: any) {
       setErrorMessage(err.message || 'Terjadi kesalahan saat mengunggah. Silakan periksa koneksi atau hubungi guru.');
@@ -288,13 +350,23 @@ export default function StudentPortal() {
             <span className="font-extrabold text-neutral-950 text-base tracking-tight">{portalSettings.PORTAL_HEADER_TEXT}</span>
           </div>
           
-          <Link
-            to="/admin/login"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-neutral-700 hover:text-neutral-950 border border-neutral-200 hover:border-neutral-950 rounded-xl bg-white shadow-sm/5 hover:shadow transition-all duration-200"
-          >
-            <LogIn className="w-3.5 h-3.5" />
-            Login Guru
-          </Link>
+          {ApiClient.getSessionToken() ? (
+            <Link
+              to="/admin"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-neutral-950 hover:bg-neutral-800 rounded-xl shadow-sm transition-all duration-200 hover:-translate-y-0.5"
+            >
+              <LayoutDashboard className="w-3.5 h-3.5" />
+              Dasbor Guru
+            </Link>
+          ) : (
+            <Link
+              to="/admin/login"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-neutral-700 hover:text-neutral-950 border border-neutral-200 hover:border-neutral-950 rounded-xl bg-white shadow-sm/5 hover:shadow transition-all duration-200"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              Login Guru
+            </Link>
+          )}
         </div>
       </header>
 
@@ -431,11 +503,31 @@ export default function StudentPortal() {
                         )}
                       </div>
                       <h3 className="font-extrabold text-neutral-900 text-xl tracking-tight">{activeSectionObj?.section_name}</h3>
-                      {activeSectionObj?.description && (
-                        <p className="text-xs text-neutral-600 mt-2.5 whitespace-pre-wrap leading-relaxed">
-                          {activeSectionObj.description}
-                        </p>
-                      )}
+                      {(() => {
+                        const parsed = parseYoutubeLink(activeSectionObj?.description || '');
+                        const embedUrl = getYoutubeEmbedUrl(parsed.youtubeLink);
+                        return (
+                          <>
+                            {parsed.cleanText && (
+                              <p className="text-xs text-neutral-600 mt-2.5 whitespace-pre-wrap leading-relaxed">
+                                {parsed.cleanText}
+                              </p>
+                            )}
+                            {embedUrl && (
+                              <div className="aspect-video w-full max-w-2xl rounded-xl overflow-hidden border border-neutral-200 shadow-sm mt-4 bg-black">
+                                <iframe
+                                  className="w-full h-full"
+                                  src={embedUrl}
+                                  title="YouTube video player"
+                                  frameBorder="0"
+                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                  allowFullScreen
+                                ></iframe>
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
 
                     {/* Instructions Content */}
@@ -443,15 +535,30 @@ export default function StudentPortal() {
                       <div className="space-y-4">
                         <h4 className="font-extrabold text-xs uppercase tracking-widest text-neutral-400">Instruksi & Panduan Belajar</h4>
                         <div className="space-y-4">
-                          {activeSectionInstructions.map((inst) => (
-                            <div key={inst.instruction_id} className="p-5 border border-neutral-200/80 rounded-xl bg-neutral-50/30 space-y-4 hover:bg-neutral-50/50 transition duration-200">
-                              <h5 className="font-extrabold text-neutral-800 text-sm">{inst.title}</h5>
-                              {inst.content_html && (
-                                <div
-                                  className="text-xs text-neutral-600 leading-relaxed max-h-48 overflow-y-auto select-text prose prose-sm pr-1 border-l-2 border-neutral-300 pl-3 py-1"
-                                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(inst.content_html) }}
-                                />
-                              )}
+                          {activeSectionInstructions.map((inst) => {
+                            const parsed = parseYoutubeLink(inst.content_html || '');
+                            const embedUrl = getYoutubeEmbedUrl(parsed.youtubeLink);
+                            return (
+                              <div key={inst.instruction_id} className="p-5 border border-neutral-200/80 rounded-xl bg-neutral-50/30 space-y-4 hover:bg-neutral-50/50 transition duration-200">
+                                <h5 className="font-extrabold text-neutral-800 text-sm">{inst.title}</h5>
+                                {parsed.cleanText && (
+                                  <div
+                                    className="text-xs text-neutral-600 leading-relaxed max-h-48 overflow-y-auto select-text prose prose-sm pr-1 border-l-2 border-neutral-300 pl-3 py-1"
+                                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(parsed.cleanText) }}
+                                  />
+                                )}
+                                {embedUrl && (
+                                  <div className="aspect-video w-full max-w-xl rounded-lg overflow-hidden border border-neutral-200 shadow-sm mt-3 bg-black">
+                                    <iframe
+                                      className="w-full h-full"
+                                      src={embedUrl}
+                                      title="YouTube video player"
+                                      frameBorder="0"
+                                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                      allowFullScreen
+                                    ></iframe>
+                                  </div>
+                                )}
 
                               {(() => {
                                 const list = parseAttachments(inst.attachment_file_id, inst.attachment_name, inst.attachment_mime_type);
@@ -478,8 +585,9 @@ export default function StudentPortal() {
                                 );
                               })()}
                             </div>
-                          ))}
-                        </div>
+                          );
+                        })}
+                      </div>
                       </div>
                     )}
 
@@ -527,87 +635,189 @@ export default function StudentPortal() {
                           </div>
                         ) : (
                           /* FORM VIEW INSIDE SECTION */
-                          <form onSubmit={handleSubmit} className="space-y-4">
-                            <div className="flex items-center gap-2 pb-2 border-b border-neutral-100">
-                              <Upload className="w-4 h-4 text-amber-500" />
-                              <h4 className="font-bold text-neutral-800 text-xs uppercase tracking-wider">Upload {activeSectionObj?.section_name || 'Tugas'}</h4>
+                          <div className="space-y-4">
+                            {/* Submission Mode Selector (Tabs) */}
+                            <div className="flex bg-neutral-100 p-1 rounded-xl gap-1 max-w-sm">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSubmissionType('file');
+                                  setErrorMessage('');
+                                }}
+                                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                                  submissionType === 'file'
+                                    ? 'bg-white text-neutral-950 shadow-sm'
+                                    : 'text-neutral-500 hover:text-neutral-950'
+                                }`}
+                              >
+                                <Upload className="w-3.5 h-3.5" />
+                                File Tugas
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSubmissionType('link');
+                                  setErrorMessage('');
+                                }}
+                                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                                  submissionType === 'link'
+                                    ? 'bg-white text-neutral-950 shadow-sm'
+                                    : 'text-neutral-500 hover:text-neutral-950'
+                                }`}
+                              >
+                                <Link2 className="w-3.5 h-3.5" />
+                                Kirim Link Video / YouTube
+                              </button>
                             </div>
 
-                            {errorMessage && (
-                              <div className="bg-red-50 border-l-4 border-red-500 p-4 text-xs text-red-700 flex items-start gap-2 rounded-xl">
-                                <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
-                                <span>{errorMessage}</span>
-                              </div>
-                            )}
-
-                            <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-end">
-                              <div className="md:col-span-4">
-                                <label htmlFor="studentName" className="block text-xs font-bold text-neutral-500 uppercase tracking-wider">
-                                  Nama Lengkap Anda
-                                </label>
-                                <input
-                                  id="studentName"
-                                  type="text"
-                                  required
-                                  placeholder="contoh: Setiawan"
-                                  className="mt-2 block w-full p-2.5 border border-neutral-300 rounded-xl text-xs bg-neutral-50/20 focus:outline-none focus:ring-2 focus:ring-neutral-950 transition-all shadow-sm font-semibold text-neutral-800"
-                                  value={fullName}
-                                  onChange={(e) => setFullName(e.target.value)}
-                                />
+                            <form onSubmit={handleSubmit} className="space-y-4">
+                              <div className="flex items-center gap-2 pb-2 border-b border-neutral-100">
+                                {submissionType === 'link' ? <Link2 className="w-4 h-4 text-sky-500" /> : <Upload className="w-4 h-4 text-amber-500" />}
+                                <h4 className="font-bold text-neutral-800 text-xs uppercase tracking-wider">
+                                  Pengumpulan: {submissionType === 'link' ? 'Tautan Video' : 'File Tugas'}
+                                </h4>
                               </div>
 
-                              <div className="md:col-span-5">
-                                <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider">
-                                  Unggah File Tugas (Maks {uploadLimitMb} MB)
-                                </label>
-                                <div
-                                  onDragEnter={handleDrag}
-                                  onDragOver={handleDrag}
-                                  onDragLeave={handleDrag}
-                                  onDrop={handleDrop}
-                                  onClick={() => fileInputRef.current?.click()}
-                                  className={`mt-2 border-2 border-dashed rounded-xl p-2.5 text-center cursor-pointer transition-all duration-200 flex items-center justify-center gap-2 shadow-sm ${
-                                    dragActive
-                                      ? 'border-neutral-950 bg-neutral-50'
-                                      : file
-                                      ? 'border-emerald-500 bg-emerald-50/10'
-                                      : 'border-neutral-300 hover:border-neutral-400 bg-neutral-50/10 hover:bg-neutral-50/30'
-                                  }`}
-                                >
-                                  <input
-                                    ref={fileInputRef}
-                                    type="file"
-                                    className="hidden"
-                                    accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.jpeg,.png,.webp,.gif"
-                                    onChange={handleFileInputChange}
-                                  />
-                                  {file ? (
-                                    <div className="flex items-center gap-1.5 truncate text-left">
-                                      <FileText className="w-4 h-4 text-emerald-600 shrink-0" />
-                                      <span className="font-extrabold text-neutral-950 text-xs truncate max-w-[150px]">{file.name}</span>
-                                      <span className="text-[9px] text-neutral-400 font-bold whitespace-nowrap">({formatBytes(file.size)})</span>
-                                    </div>
+                              {errorMessage && (
+                                <div className="bg-red-50 border-l-4 border-red-500 p-4 text-xs text-red-700 flex items-start gap-2 rounded-xl">
+                                  <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                                  <span>{errorMessage}</span>
+                                </div>
+                              )}
+
+                              <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
+                                <div className="md:col-span-4">
+                                  <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider">
+                                    Nama Lengkap Anda
+                                  </label>
+                                  {activeClassStudents.length > 0 ? (
+                                    <>
+                                      <select
+                                        id="studentNameSelect"
+                                        required={!isManualName}
+                                        className="mt-2 block w-full p-2.5 border border-neutral-300 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-neutral-950 transition-all shadow-sm font-semibold text-neutral-800 cursor-pointer"
+                                        value={selectedStudentId}
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          setSelectedStudentId(val);
+                                          if (val === 'MANUAL') {
+                                            setIsManualName(true);
+                                          } else {
+                                            setIsManualName(false);
+                                          }
+                                        }}
+                                      >
+                                        <option value="">-- Pilih Nama Anda --</option>
+                                        {activeClassStudents.map(std => (
+                                          <option key={std.student_id} value={std.student_id}>{std.full_name}</option>
+                                        ))}
+                                        <option value="MANUAL">Ketik Manual / Siswa Baru...</option>
+                                      </select>
+
+                                      {isManualName && (
+                                        <div className="mt-2 animate-fade-in">
+                                          <input
+                                            id="studentManualName"
+                                            type="text"
+                                            required
+                                            placeholder="Ketik nama lengkap Anda"
+                                            className="block w-full p-2.5 border border-neutral-300 rounded-xl text-xs bg-neutral-50/20 focus:outline-none focus:ring-2 focus:ring-neutral-950 transition-all shadow-sm font-semibold text-neutral-800"
+                                            value={fullName}
+                                            onChange={(e) => setFullName(e.target.value)}
+                                          />
+                                        </div>
+                                      )}
+                                    </>
                                   ) : (
-                                    <div className="flex items-center gap-1.5 text-neutral-500">
-                                      <Upload className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
-                                      <span className="text-xs font-medium">Klik / seret file tugas Anda</span>
-                                    </div>
+                                    <input
+                                      id="studentName"
+                                      type="text"
+                                      required
+                                      placeholder="contoh: Setiawan"
+                                      className="mt-2 block w-full p-2.5 border border-neutral-300 rounded-xl text-xs bg-neutral-50/20 focus:outline-none focus:ring-2 focus:ring-neutral-950 transition-all shadow-sm font-semibold text-neutral-800"
+                                      value={fullName}
+                                      onChange={(e) => setFullName(e.target.value)}
+                                    />
                                   )}
                                 </div>
-                              </div>
 
-                              <div className="md:col-span-3">
-                                <button
-                                  type="submit"
-                                  disabled={submitting}
-                                  className="w-full py-2.5 bg-neutral-950 hover:bg-neutral-800 disabled:bg-neutral-200 disabled:text-neutral-400 disabled:cursor-not-allowed text-white font-bold text-xs rounded-xl transition-all duration-200 shadow-md flex items-center justify-center gap-1.5 cursor-pointer hover:-translate-y-0.5 active:translate-y-0"
-                                >
-                                  <Upload className="w-3.5 h-3.5" />
-                                  {submitting ? 'Mengirim...' : 'Kumpulkan'}
-                                </button>
+                                <div className="md:col-span-5">
+                                  {submissionType === 'file' ? (
+                                    <>
+                                      <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider">
+                                        Unggah File Tugas (Maks {uploadLimitMb} MB)
+                                      </label>
+                                      <div
+                                        onDragEnter={handleDrag}
+                                        onDragOver={handleDrag}
+                                        onDragLeave={handleDrag}
+                                        onDrop={handleDrop}
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className={`mt-2 border-2 border-dashed rounded-xl p-2.5 text-center cursor-pointer transition-all duration-200 flex items-center justify-center gap-2 shadow-sm ${
+                                          dragActive
+                                            ? 'border-neutral-950 bg-neutral-50'
+                                            : file
+                                            ? 'border-emerald-500 bg-emerald-50/10'
+                                            : 'border-neutral-300 hover:border-neutral-400 bg-neutral-50/10 hover:bg-neutral-50/30'
+                                        }`}
+                                      >
+                                        <input
+                                          ref={fileInputRef}
+                                          type="file"
+                                          className="hidden"
+                                          accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.jpeg,.png,.webp,.gif"
+                                          onChange={handleFileInputChange}
+                                        />
+                                        {file ? (
+                                          <div className="flex items-center gap-1.5 truncate text-left">
+                                            <FileText className="w-4 h-4 text-emerald-600 shrink-0" />
+                                            <span className="font-extrabold text-neutral-950 text-xs truncate max-w-[150px]">{file.name}</span>
+                                            <span className="text-[9px] text-neutral-400 font-bold whitespace-nowrap">({formatBytes(file.size)})</span>
+                                          </div>
+                                        ) : (
+                                          <div className="flex items-center gap-1.5 text-neutral-500">
+                                            <Upload className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+                                            <span className="text-xs font-medium">Klik / seret file tugas Anda</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <label htmlFor="videoLinkInput" className="block text-xs font-bold text-neutral-500 uppercase tracking-wider">
+                                        Tautan Video (YouTube / Google Drive)
+                                      </label>
+                                      <div className="relative mt-2 rounded-xl shadow-sm">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                          <Link2 className="h-3.5 w-3.5 text-neutral-400" />
+                                        </div>
+                                        <input
+                                          id="videoLinkInput"
+                                          type="url"
+                                          required
+                                          placeholder="https://www.youtube.com/watch?v=..."
+                                          className="block w-full pl-9 pr-3 py-2.5 border border-neutral-300 rounded-xl text-xs bg-neutral-50/20 focus:outline-none focus:ring-2 focus:ring-neutral-950 transition-all font-semibold text-neutral-800"
+                                          value={linkUrl}
+                                          onChange={(e) => setLinkUrl(e.target.value)}
+                                        />
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+
+                                <div className="md:col-span-3 pt-6 md:pt-0">
+                                  <button
+                                    type="submit"
+                                    disabled={submitting}
+                                    className="w-full py-2.5 bg-neutral-950 hover:bg-neutral-800 disabled:bg-neutral-200 disabled:text-neutral-400 disabled:cursor-not-allowed text-white font-bold text-xs rounded-xl transition-all duration-200 shadow-md flex items-center justify-center gap-1.5 cursor-pointer hover:-translate-y-0.5 active:translate-y-0"
+                                  >
+                                    {submissionType === 'link' ? <Link2 className="w-3.5 h-3.5" /> : <Upload className="w-3.5 h-3.5" />}
+                                    {submitting ? 'Mengirim...' : 'Kumpulkan'}
+                                  </button>
+                                </div>
                               </div>
-                            </div>
-                          </form>
+                            </form>
+                          </div>
                         )}
                       </div>
                     )}

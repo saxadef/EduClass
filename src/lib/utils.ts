@@ -204,3 +204,73 @@ export function sanitizeStudentName(name: string): string {
   // 3. Remove excessive spaces and limit size
   return cleaned.replace(/\s+/g, ' ').trim().substring(0, 70);
 }
+
+/**
+ * Parses out potential hidden youtube links stored within text descriptions or contents.
+ */
+export function parseYoutubeLink(text: string): { cleanText: string; youtubeLink: string } {
+  if (!text) return { cleanText: '', youtubeLink: '' };
+  const match = text.match(/\|\|YT_LINK:(.*?)\|\|/);
+  if (match) {
+    return {
+      cleanText: text.replace(/\|\|YT_LINK:(.*?)\|\|/, '').trim(),
+      youtubeLink: match[1].trim()
+    };
+  }
+  return { cleanText: text, youtubeLink: '' };
+}
+
+/**
+ * Converts standard YouTube URLs into embeddable player links.
+ */
+export function getYoutubeEmbedUrl(url: string): string {
+  if (!url) return '';
+  let videoId = '';
+  try {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    if (match && match[2].length === 11) {
+      videoId = match[2];
+    }
+  } catch (e) {
+    console.error('Failed to parse youtube link', e);
+  }
+  if (videoId) {
+    return `https://www.youtube.com/embed/${videoId}`;
+  }
+  return '';
+}
+
+/**
+ * Encodes a student-submitted link inside a safe filename.
+ */
+export function encodeSubmissionLink(url: string, studentName: string): string {
+  if (!url) return '';
+  // Convert URL to Base64 and make it safe for file systems by substituting '/' and '+'
+  const safeBase64 = btoa(url).replace(/\//g, '_').replace(/\+/g, '-').replace(/=/g, '');
+  const safeName = studentName.replace(/[^a-zA-Z0-9]/g, '_');
+  return `LINK_SUB_${safeBase64}_${safeName}.txt`;
+}
+
+/**
+ * Decodes the original URL from a safe filename.
+ */
+export function decodeSubmissionLink(filename: string): string {
+  if (!filename || !filename.startsWith('LINK_SUB_')) return '';
+  const parts = filename.split('_');
+  if (parts.length < 3) return '';
+  const safeBase64 = parts[2];
+  // Restore base64 padding and characters
+  let base64 = safeBase64.replace(/_/g, '/').replace(/-/g, '+');
+  while (base64.length % 4) {
+    base64 += '=';
+  }
+  try {
+    return atob(base64);
+  } catch (e) {
+    console.error('Failed to decode link from filename:', e);
+    return '';
+  }
+}
+
+
