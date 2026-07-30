@@ -327,12 +327,17 @@ export default function StudentPortal() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-sky-50/70 via-indigo-50/10 to-neutral-50 flex flex-col font-sans select-none antialiased relative">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans select-none antialiased relative overflow-hidden">
+      {/* Dynamic colorful decorative glowing spots */}
+      <div className="absolute top-[5%] left-[-15%] w-[60%] h-[45%] rounded-full bg-indigo-600/15 blur-[140px] pointer-events-none z-0" />
+      <div className="absolute top-[35%] right-[-15%] w-[60%] h-[45%] rounded-full bg-sky-600/15 blur-[140px] pointer-events-none z-0" />
+      <div className="absolute bottom-[-10%] left-[20%] w-[50%] h-[40%] rounded-full bg-emerald-600/10 blur-[140px] pointer-events-none z-0" />
+
       {/* Decorative premium top accent line */}
       <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-600 z-50" />
 
       {/* Header navbar */}
-      <header className="border-b border-neutral-200/80 bg-white/80 backdrop-blur-md sticky top-0 z-30 shadow-sm/5">
+      <header className="border-b border-slate-800/80 bg-slate-950/70 backdrop-blur-md sticky top-0 z-30 shadow-lg relative">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             {portalSettings.PORTAL_LOGO_IMAGE_URL ? (
@@ -343,17 +348,17 @@ export default function StudentPortal() {
                 referrerPolicy="no-referrer"
               />
             ) : (
-              <span className="px-2 py-1.5 bg-neutral-950 text-white rounded-xl text-xs font-black tracking-widest select-none uppercase shadow-sm">
+              <span className="px-2.5 py-1.5 bg-white text-slate-950 rounded-xl text-xs font-black tracking-widest select-none uppercase shadow-sm">
                 {portalSettings.PORTAL_LOGO_TEXT}
               </span>
             )}
-            <span className="font-extrabold text-neutral-950 text-base tracking-tight">{portalSettings.PORTAL_HEADER_TEXT}</span>
+            <span className="font-extrabold text-white text-base tracking-tight">{portalSettings.PORTAL_HEADER_TEXT}</span>
           </div>
           
           {ApiClient.getSessionToken() ? (
             <Link
               to="/admin"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-neutral-950 hover:bg-neutral-800 rounded-xl shadow-sm transition-all duration-200 hover:-translate-y-0.5"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-950 bg-white hover:bg-slate-200 rounded-xl shadow-md transition-all duration-200 hover:-translate-y-0.5"
             >
               <LayoutDashboard className="w-3.5 h-3.5" />
               Dasbor Guru
@@ -361,7 +366,7 @@ export default function StudentPortal() {
           ) : (
             <Link
               to="/admin/login"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-neutral-700 hover:text-neutral-950 border border-neutral-200 hover:border-neutral-950 rounded-xl bg-white shadow-sm/5 hover:shadow transition-all duration-200"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-300 hover:text-white border border-slate-800 hover:border-slate-700 bg-slate-900/80 rounded-xl shadow-md transition-all duration-200"
             >
               <LogIn className="w-3.5 h-3.5" />
               Login Guru
@@ -371,32 +376,32 @@ export default function StudentPortal() {
       </header>
 
       {/* Main Grid View */}
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-8">
+      <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-8 relative z-10">
         {loading ? (
-          <div className="py-24 text-center text-sm font-semibold text-neutral-400 flex flex-col items-center justify-center gap-3">
-            <RefreshCw className="w-6 h-6 animate-spin text-neutral-500" />
+          <div className="py-24 text-center text-sm font-semibold text-slate-400 flex flex-col items-center justify-center gap-3">
+            <RefreshCw className="w-6 h-6 animate-spin text-sky-400" />
             <span>Memuat file pelajaran dan tugas aktif...</span>
           </div>
         ) : (
           <div className="space-y-6">
             {/* Unified Class Selector card */}
-            <div className="bg-white border border-neutral-200/70 rounded-2xl p-6 shadow-sm hover:shadow transition-all duration-300 flex flex-col sm:flex-row sm:items-center justify-between gap-6 relative overflow-hidden">
+            <div className="bg-slate-900/85 border border-slate-800/80 rounded-2xl p-6 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-6 relative overflow-hidden backdrop-blur-sm">
               <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-sky-400 to-indigo-600" />
               <div className="space-y-1 pl-2">
-                <h2 className="text-xs font-bold uppercase text-neutral-400 tracking-wider">Langkah 1: Pilih Kelas Anda</h2>
-                <p className="text-xs text-neutral-600">Pilih kelas Anda untuk melihat daftar pertemuan, materi pembelajaran, dan mengumpulkan tugas.</p>
+                <h2 className="text-xs font-bold uppercase text-sky-400 tracking-wider">Langkah 1: Pilih Kelas Anda</h2>
+                <p className="text-xs text-slate-300">Pilih kelas Anda untuk melihat daftar pertemuan, materi pembelajaran, dan mengumpulkan tugas.</p>
               </div>
               <div className="shrink-0 w-full sm:w-64">
                 <select
                   id="classSel"
                   required
-                  className="block w-full p-2.5 border border-neutral-300 rounded-xl text-sm bg-white font-bold text-neutral-800 focus:outline-none focus:ring-2 focus:ring-neutral-950 transition-all cursor-pointer shadow-sm"
+                  className="block w-full p-2.5 border border-slate-700 rounded-xl text-sm bg-slate-850 font-bold text-white focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all cursor-pointer shadow-md"
                   value={selectedClassId}
                   onChange={(e) => setSelectedClassId(e.target.value)}
                 >
-                  <option value="" disabled>-- Pilih Kelas --</option>
+                  <option value="" disabled className="bg-slate-900">-- Pilih Kelas --</option>
                   {classes.map(c => (
-                    <option key={c.class_id} value={c.class_id}>Kelas {c.class_name}</option>
+                    <option key={c.class_id} value={c.class_id} className="bg-slate-900">Kelas {c.class_name}</option>
                   ))}
                 </select>
               </div>
@@ -408,25 +413,25 @@ export default function StudentPortal() {
               <div className="lg:col-span-4 space-y-6">
                 
                 {/* Introduction Card */}
-                <div className="border border-neutral-200/70 rounded-2xl p-6 bg-white shadow-sm hover:shadow transition-all duration-300 space-y-4">
-                  <h2 className="text-base font-extrabold text-neutral-950">{portalSettings.STUDENT_DESK_TITLE}</h2>
-                  <p className="text-xs text-neutral-600 leading-relaxed">
+                <div className="border border-slate-800/80 rounded-2xl p-6 bg-slate-900/85 shadow-xl backdrop-blur-sm space-y-4">
+                  <h2 className="text-base font-extrabold text-white">{portalSettings.STUDENT_DESK_TITLE}</h2>
+                  <p className="text-xs text-slate-300 leading-relaxed">
                     {portalSettings.STUDENT_DESK_DESC}
                   </p>
-                  <div className="flex items-start gap-2 text-[10px] text-neutral-500 bg-neutral-50 p-3 rounded-xl border border-neutral-200/60 leading-relaxed">
-                    <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <div className="flex items-start gap-2 text-[10px] text-slate-400 bg-slate-950/60 p-3 rounded-xl border border-slate-800/80 leading-relaxed">
+                    <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                     <span>Pengunggahan dilindungi secara aman. Pengumpulan disimpan di folder kelas terenkripsi.</span>
                   </div>
                 </div>
 
                 {/* List of Sections for Selected Class */}
-                <div className="border border-neutral-200/70 rounded-2xl p-6 bg-white shadow-sm hover:shadow transition-all duration-300 space-y-4">
-                  <h3 className="font-bold text-neutral-950 text-sm flex items-center gap-1.5 border-b border-neutral-100 pb-3">
-                    <FileText className="w-4 h-4 text-neutral-400" />
+                <div className="border border-slate-800/80 rounded-2xl p-6 bg-slate-900/85 shadow-xl backdrop-blur-sm space-y-4">
+                  <h3 className="font-bold text-white text-sm flex items-center gap-1.5 border-b border-slate-800 pb-3">
+                    <FileText className="w-4 h-4 text-slate-400" />
                     Daftar Pertemuan & Tugas
                   </h3>
                   {activeClassSections.length === 0 ? (
-                    <p className="text-xs text-neutral-500 italic py-6 text-center">Belum ada pertemuan atau tugas yang diterbitkan untuk kelas ini.</p>
+                    <p className="text-xs text-slate-400 italic py-6 text-center">Belum ada pertemuan atau tugas yang diterbitkan untuk kelas ini.</p>
                   ) : (
                     <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
                       {activeClassSections.map((sec) => {
@@ -442,25 +447,25 @@ export default function StudentPortal() {
                               setFullName('');
                               setFile(null);
                             }}
-                            className={`w-full text-left p-3 rounded-xl text-xs transition-all duration-200 border flex items-center justify-between gap-2.5 ${
+                            className={`w-full text-left p-3.5 rounded-xl text-xs transition-all duration-200 border flex items-center justify-between gap-2.5 cursor-pointer ${
                               isActive
-                                ? 'bg-neutral-950 text-white border-neutral-950 font-semibold shadow-md translate-x-1'
-                                : 'bg-white hover:bg-neutral-50 text-neutral-800 border-neutral-200 hover:border-neutral-300'
+                                ? 'bg-sky-600 text-white border-sky-500 font-semibold shadow-lg shadow-sky-900/40 translate-x-1'
+                                : 'bg-slate-800/60 hover:bg-slate-800 text-slate-200 border-slate-700/80 hover:border-slate-600'
                             }`}
                           >
                             <div className="truncate pr-1 flex items-center gap-2">
                               <span className={`inline-block text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded ${
                                 isActive 
-                                  ? sec.submission_enabled ? 'bg-white/20 text-white' : 'bg-white/10 text-white/90'
-                                  : sec.submission_enabled ? 'bg-amber-100 text-amber-800' : 'bg-neutral-100 text-neutral-700'
+                                  ? sec.submission_enabled ? 'bg-white/25 text-white' : 'bg-white/10 text-white/90'
+                                  : sec.submission_enabled ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-slate-700 text-slate-300'
                               }`}>
                                 {sec.submission_enabled ? 'Tugas' : 'Materi'}
                               </span>
-                              <span className="text-xs truncate font-medium">{sec.section_name}</span>
+                              <span className="text-xs truncate font-semibold">{sec.section_name}</span>
                             </div>
                             {sec.due_at && (
                               <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold whitespace-nowrap ${
-                                isActive ? 'bg-white/20 text-white' : 'bg-neutral-100 text-neutral-500'
+                                isActive ? 'bg-white/20 text-white' : 'bg-slate-900 text-slate-400 border border-slate-800/50'
                               }`}>
                                 Selesai: {new Date(sec.due_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
                               </span>
@@ -477,44 +482,44 @@ export default function StudentPortal() {
               {/* RIGHT COLUMN: Active Section Viewer & Nested Submission Form */}
               <div className="lg:col-span-8">
                 {!selectedSectionId ? (
-                  <div className="border border-neutral-200/70 bg-white rounded-2xl p-12 text-center space-y-4 shadow-sm hover:shadow transition-all duration-300">
-                    <div className="w-16 h-16 bg-neutral-50 rounded-full flex items-center justify-center mx-auto border border-neutral-100">
-                      <FileText className="w-8 h-8 text-neutral-400" />
+                  <div className="border border-slate-800/80 bg-slate-900/85 rounded-2xl p-12 text-center space-y-4 shadow-xl backdrop-blur-sm">
+                    <div className="w-16 h-16 bg-slate-950 rounded-full flex items-center justify-center mx-auto border border-slate-800">
+                      <FileText className="w-8 h-8 text-slate-400" />
                     </div>
-                    <h3 className="font-bold text-neutral-800 text-sm">Pilih Pertemuan & Tugas</h3>
-                    <p className="text-xs text-neutral-500 max-w-xs mx-auto leading-relaxed">
+                    <h3 className="font-bold text-slate-200 text-sm">Pilih Pertemuan & Tugas</h3>
+                    <p className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
                       Silakan pilih salah satu pertemuan atau tugas aktif dari daftar di sebelah kiri untuk melihat materi panduan dan mengumpulkan tugas Anda.
                     </p>
                   </div>
                 ) : (
-                  <div className="border border-neutral-200/70 bg-white rounded-2xl p-8 shadow-sm hover:shadow transition-all duration-300 space-y-6 relative overflow-hidden">
+                  <div className="border border-slate-800/80 bg-slate-900/85 rounded-2xl p-8 shadow-xl backdrop-blur-sm space-y-6 relative overflow-hidden">
                     {/* Section Header */}
-                    <div className="border-b border-neutral-150 pb-5">
+                    <div className="border-b border-slate-800 pb-5">
                       <div className="flex flex-wrap items-center gap-2 mb-3">
                         <span className={`inline-block text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded ${
-                          activeSectionObj?.submission_enabled ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-neutral-100 text-neutral-700'
+                          activeSectionObj?.submission_enabled ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold' : 'bg-slate-800 text-slate-300 border border-slate-700'
                         }`}>
                           {activeSectionObj?.submission_enabled ? 'Tugas Terjadwal' : 'Materi Pembelajaran'}
                         </span>
                         {activeSectionObj?.due_at && (
-                          <span className="text-[10px] bg-red-50 text-red-700 border border-red-100 px-2.5 py-0.5 rounded font-bold">
+                          <span className="text-[10px] bg-rose-500/10 text-rose-300 border border-rose-500/20 px-2.5 py-0.5 rounded font-bold">
                             Batas Waktu: {new Date(activeSectionObj.due_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                           </span>
                         )}
                       </div>
-                      <h3 className="font-extrabold text-neutral-900 text-xl tracking-tight">{activeSectionObj?.section_name}</h3>
+                      <h3 className="font-extrabold text-white text-xl tracking-tight">{activeSectionObj?.section_name}</h3>
                       {(() => {
                         const parsed = parseYoutubeLink(activeSectionObj?.description || '');
                         const embedUrl = getYoutubeEmbedUrl(parsed.youtubeLink);
                         return (
                           <>
                             {parsed.cleanText && (
-                              <p className="text-xs text-neutral-600 mt-2.5 whitespace-pre-wrap leading-relaxed">
+                              <p className="text-xs text-slate-300 mt-2.5 whitespace-pre-wrap leading-relaxed">
                                 {parsed.cleanText}
                               </p>
                             )}
                             {embedUrl && (
-                              <div className="aspect-video w-full max-w-2xl rounded-xl overflow-hidden border border-neutral-200 shadow-sm mt-4 bg-black">
+                              <div className="aspect-video w-full max-w-2xl rounded-xl overflow-hidden border border-slate-800 shadow-lg mt-4 bg-black">
                                 <iframe
                                   className="w-full h-full"
                                   src={embedUrl}
@@ -533,22 +538,22 @@ export default function StudentPortal() {
                     {/* Instructions Content */}
                     {activeSectionInstructions.length > 0 && (
                       <div className="space-y-4">
-                        <h4 className="font-extrabold text-xs uppercase tracking-widest text-neutral-400">Instruksi & Panduan Belajar</h4>
+                        <h4 className="font-extrabold text-xs uppercase tracking-widest text-slate-400">Instruksi & Panduan Belajar</h4>
                         <div className="space-y-4">
                           {activeSectionInstructions.map((inst) => {
                             const parsed = parseYoutubeLink(inst.content_html || '');
                             const embedUrl = getYoutubeEmbedUrl(parsed.youtubeLink);
                             return (
-                              <div key={inst.instruction_id} className="p-5 border border-neutral-200/80 rounded-xl bg-neutral-50/30 space-y-4 hover:bg-neutral-50/50 transition duration-200">
-                                <h5 className="font-extrabold text-neutral-800 text-sm">{inst.title}</h5>
+                              <div key={inst.instruction_id} className="p-5 border border-slate-800 rounded-xl bg-slate-950/40 space-y-4 hover:bg-slate-950/60 transition duration-200">
+                                <h5 className="font-extrabold text-white text-sm">{inst.title}</h5>
                                 {parsed.cleanText && (
                                   <div
-                                    className="text-xs text-neutral-600 leading-relaxed max-h-48 overflow-y-auto select-text prose prose-sm pr-1 border-l-2 border-neutral-300 pl-3 py-1"
+                                    className="text-xs text-slate-300 leading-relaxed max-h-48 overflow-y-auto select-text prose prose-invert prose-sm pr-1 border-l-2 border-slate-700 pl-3 py-1"
                                     dangerouslySetInnerHTML={{ __html: sanitizeHtml(parsed.cleanText) }}
                                   />
                                 )}
                                 {embedUrl && (
-                                  <div className="aspect-video w-full max-w-xl rounded-lg overflow-hidden border border-neutral-200 shadow-sm mt-3 bg-black">
+                                  <div className="aspect-video w-full max-w-xl rounded-lg overflow-hidden border border-slate-800 shadow-lg mt-3 bg-black">
                                     <iframe
                                       className="w-full h-full"
                                       src={embedUrl}
@@ -560,74 +565,74 @@ export default function StudentPortal() {
                                   </div>
                                 )}
 
-                              {(() => {
-                                const list = parseAttachments(inst.attachment_file_id, inst.attachment_name, inst.attachment_mime_type);
-                                if (list.length === 0) return null;
-                                return (
-                                  <div className="mt-3 pt-3 border-t border-neutral-200/60 space-y-2">
-                                    <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">Berkas Lampiran Pendukung:</p>
-                                    <div className="flex flex-wrap gap-2">
-                                      {list.map((attFile, fIdx) => (
-                                        <a
-                                          key={attFile.id || fIdx}
-                                          href={`https://drive.google.com/file/d/${attFile.id}/view?usp=drivesdk`}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="inline-flex items-center gap-1.5 bg-white hover:bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-1.5 text-xs text-neutral-800 font-medium transition-colors cursor-pointer shadow-sm"
-                                        >
-                                          <FileIcon mimeType={attFile.mimeType} className="w-4 h-4 text-neutral-600" />
-                                          <span className="font-semibold truncate max-w-[240px]">{attFile.name}</span>
-                                          <Download className="w-3.5 h-3.5 text-neutral-400 ml-1" />
-                                        </a>
-                                      ))}
-                                    </div>
-                                  </div>
-                                );
-                              })()}
-                            </div>
-                          );
-                        })}
-                      </div>
-                      </div>
-                    )}
+                               {(() => {
+                                 const list = parseAttachments(inst.attachment_file_id, inst.attachment_name, inst.attachment_mime_type);
+                                 if (list.length === 0) return null;
+                                 return (
+                                   <div className="mt-3 pt-3 border-t border-slate-800/80 space-y-2">
+                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Berkas Lampiran Pendukung:</p>
+                                     <div className="flex flex-wrap gap-2">
+                                       {list.map((attFile, fIdx) => (
+                                         <a
+                                           key={attFile.id || fIdx}
+                                           href={`https://drive.google.com/file/d/${attFile.id}/view?usp=drivesdk`}
+                                           target="_blank"
+                                           rel="noopener noreferrer"
+                                           className="inline-flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 font-medium transition-colors cursor-pointer shadow-md"
+                                         >
+                                           <FileIcon mimeType={attFile.mimeType} className="w-4 h-4 text-sky-400" />
+                                           <span className="font-semibold truncate max-w-[240px]">{attFile.name}</span>
+                                           <Download className="w-3.5 h-3.5 text-slate-400 ml-1" />
+                                         </a>
+                                       ))}
+                                     </div>
+                                   </div>
+                                 );
+                               })()}
+                             </div>
+                           );
+                         })}
+                       </div>
+                       </div>
+                     )}
 
                     {/* Nested Submission Form / Success State (ONLY IF SUBMISSION IS ENABLED) */}
                     {activeSectionObj?.submission_enabled && (
-                      <div className="mt-8 pt-6 border-t border-neutral-200 space-y-4">
+                      <div className="mt-8 pt-6 border-t border-slate-800 space-y-4">
                         {successData ? (
                           /* SUCCESS VIEW INSIDE SECTION */
-                          <div className="border border-emerald-200/80 bg-emerald-50/20 rounded-2xl p-6 text-center space-y-5 animate-fade-in relative overflow-hidden">
+                          <div className="border border-emerald-500/30 bg-emerald-950/20 rounded-2xl p-6 text-center space-y-5 animate-fade-in relative overflow-hidden">
                             <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-500" />
                             <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center mx-auto shadow-md">
                               <CheckCircle className="w-6 h-6 text-white" />
                             </div>
 
                             <div className="space-y-1">
-                              <h4 className="text-base font-extrabold text-neutral-900">Tugas Anda Berhasil Dikumpulkan!</h4>
-                              <p className="text-xs text-neutral-600 max-w-md mx-auto leading-relaxed">
+                              <h4 className="text-base font-extrabold text-white">Tugas Anda Berhasil Dikumpulkan!</h4>
+                              <p className="text-xs text-slate-300 max-w-md mx-auto leading-relaxed">
                                 File tugas telah disimpan dengan aman di Google Drive Anda dan notifikasi terkirim ke Telegram Guru.
                               </p>
                             </div>
 
-                            <div className="border border-emerald-100 bg-white rounded-xl p-4 text-left text-xs space-y-2.5 max-w-sm mx-auto shadow-sm">
-                              <div className="flex justify-between gap-2 border-b border-neutral-100 pb-2">
-                                <span className="font-bold text-neutral-400">ID Pengumpulan:</span>
-                                <span className="font-mono text-neutral-800 text-[10px] font-bold break-all">{successData.submissionId}</span>
+                            <div className="border border-emerald-800/40 bg-slate-900/80 rounded-xl p-4 text-left text-xs space-y-2.5 max-w-sm mx-auto shadow-md">
+                              <div className="flex justify-between gap-2 border-b border-slate-800 pb-2">
+                                <span className="font-bold text-slate-400">ID Pengumpulan:</span>
+                                <span className="font-mono text-slate-200 text-[10px] font-bold break-all">{successData.submissionId}</span>
                               </div>
-                              <div className="flex justify-between gap-2 border-b border-neutral-100 pb-2">
-                                <span className="font-bold text-neutral-400">Nama File:</span>
-                                <span className="font-semibold text-neutral-800 truncate max-w-[200px]">{successData.fileName}</span>
+                              <div className="flex justify-between gap-2 border-b border-slate-800 pb-2">
+                                <span className="font-bold text-slate-400">Nama File / Link:</span>
+                                <span className="font-semibold text-slate-200 truncate max-w-[200px]">{successData.fileName}</span>
                               </div>
                               <div className="flex justify-between gap-2">
-                                <span className="font-bold text-neutral-400">Waktu Kirim:</span>
-                                <span className="text-neutral-600 font-semibold">{new Date(successData.timestamp).toLocaleString('id-ID')}</span>
+                                <span className="font-bold text-slate-400">Waktu Kirim:</span>
+                                <span className="text-slate-300 font-semibold">{new Date(successData.timestamp).toLocaleString('id-ID')}</span>
                               </div>
                             </div>
 
                             <button
                               type="button"
                               onClick={() => setSuccessData(null)}
-                              className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-neutral-950 hover:bg-neutral-800 text-white rounded-xl text-xs font-bold transition-all duration-200 shadow-md hover:-translate-y-0.5"
+                              className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-white hover:bg-slate-200 text-slate-950 rounded-xl text-xs font-bold transition-all duration-200 shadow-md hover:-translate-y-0.5 cursor-pointer"
                             >
                               Kirim Ulang / Kirim File Lain
                               <ArrowRight className="w-3.5 h-3.5" />
@@ -637,20 +642,20 @@ export default function StudentPortal() {
                           /* FORM VIEW INSIDE SECTION */
                           <div className="space-y-4">
                             {/* Submission Mode Selector (Tabs) */}
-                            <div className="flex bg-neutral-100 p-1 rounded-xl gap-1 max-w-sm">
+                            <div className="bg-slate-950/80 p-1.5 rounded-2xl flex gap-1.5 max-w-md border border-slate-800 shadow-inner">
                               <button
                                 type="button"
                                 onClick={() => {
                                   setSubmissionType('file');
                                   setErrorMessage('');
                                 }}
-                                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                                className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-extrabold transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${
                                   submissionType === 'file'
-                                    ? 'bg-white text-neutral-950 shadow-sm'
-                                    : 'text-neutral-500 hover:text-neutral-950'
+                                    ? 'bg-sky-600 text-white shadow-md scale-[1.02]'
+                                    : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
                                 }`}
                               >
-                                <Upload className="w-3.5 h-3.5" />
+                                <Upload className={`w-4 h-4 shrink-0 transition-colors ${submissionType === 'file' ? 'text-amber-400' : 'text-slate-400'}`} />
                                 File Tugas
                               </button>
                               <button
@@ -659,27 +664,27 @@ export default function StudentPortal() {
                                   setSubmissionType('link');
                                   setErrorMessage('');
                                 }}
-                                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                                className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-extrabold transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${
                                   submissionType === 'link'
-                                    ? 'bg-white text-neutral-950 shadow-sm'
-                                    : 'text-neutral-500 hover:text-neutral-950'
+                                    ? 'bg-sky-600 text-white shadow-md scale-[1.02]'
+                                    : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
                                 }`}
                               >
-                                <Link2 className="w-3.5 h-3.5" />
+                                <Link2 className={`w-4 h-4 shrink-0 transition-colors ${submissionType === 'link' ? 'text-sky-400' : 'text-slate-400'}`} />
                                 Kirim Link Video / YouTube
                               </button>
                             </div>
 
                             <form onSubmit={handleSubmit} className="space-y-4">
-                              <div className="flex items-center gap-2 pb-2 border-b border-neutral-100">
-                                {submissionType === 'link' ? <Link2 className="w-4 h-4 text-sky-500" /> : <Upload className="w-4 h-4 text-amber-500" />}
-                                <h4 className="font-bold text-neutral-800 text-xs uppercase tracking-wider">
+                              <div className="flex items-center gap-2 pb-2 border-b border-slate-800">
+                                {submissionType === 'link' ? <Link2 className="w-4 h-4 text-sky-400" /> : <Upload className="w-4 h-4 text-amber-400" />}
+                                <h4 className="font-bold text-slate-200 text-xs uppercase tracking-wider">
                                   Pengumpulan: {submissionType === 'link' ? 'Tautan Video' : 'File Tugas'}
                                 </h4>
                               </div>
 
                               {errorMessage && (
-                                <div className="bg-red-50 border-l-4 border-red-500 p-4 text-xs text-red-700 flex items-start gap-2 rounded-xl">
+                                <div className="bg-red-950/40 border border-red-800/60 p-4 text-xs text-red-200 flex items-start gap-2 rounded-xl">
                                   <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
                                   <span>{errorMessage}</span>
                                 </div>
@@ -687,7 +692,7 @@ export default function StudentPortal() {
 
                               <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
                                 <div className="md:col-span-4">
-                                  <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider">
+                                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
                                     Nama Lengkap Anda
                                   </label>
                                   {activeClassStudents.length > 0 ? (
@@ -695,7 +700,7 @@ export default function StudentPortal() {
                                       <select
                                         id="studentNameSelect"
                                         required={!isManualName}
-                                        className="mt-2 block w-full p-2.5 border border-neutral-300 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-neutral-950 transition-all shadow-sm font-semibold text-neutral-800 cursor-pointer"
+                                        className="mt-2 block w-full p-2.5 border border-slate-700 rounded-xl text-xs bg-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all shadow-md font-semibold text-white cursor-pointer"
                                         value={selectedStudentId}
                                         onChange={(e) => {
                                           const val = e.target.value;
@@ -707,11 +712,11 @@ export default function StudentPortal() {
                                           }
                                         }}
                                       >
-                                        <option value="">-- Pilih Nama Anda --</option>
+                                        <option value="" className="bg-slate-900">-- Pilih Nama Anda --</option>
                                         {activeClassStudents.map(std => (
-                                          <option key={std.student_id} value={std.student_id}>{std.full_name}</option>
+                                          <option key={std.student_id} value={std.student_id} className="bg-slate-900">{std.full_name}</option>
                                         ))}
-                                        <option value="MANUAL">Ketik Manual / Siswa Baru...</option>
+                                        <option value="MANUAL" className="bg-slate-900">Ketik Manual / Siswa Baru...</option>
                                       </select>
 
                                       {isManualName && (
@@ -721,7 +726,7 @@ export default function StudentPortal() {
                                             type="text"
                                             required
                                             placeholder="Ketik nama lengkap Anda"
-                                            className="block w-full p-2.5 border border-neutral-300 rounded-xl text-xs bg-neutral-50/20 focus:outline-none focus:ring-2 focus:ring-neutral-950 transition-all shadow-sm font-semibold text-neutral-800"
+                                            className="block w-full p-2.5 border border-slate-700 rounded-xl text-xs bg-slate-800/50 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all shadow-md font-semibold text-white"
                                             value={fullName}
                                             onChange={(e) => setFullName(e.target.value)}
                                           />
@@ -734,7 +739,7 @@ export default function StudentPortal() {
                                       type="text"
                                       required
                                       placeholder="contoh: Setiawan"
-                                      className="mt-2 block w-full p-2.5 border border-neutral-300 rounded-xl text-xs bg-neutral-50/20 focus:outline-none focus:ring-2 focus:ring-neutral-950 transition-all shadow-sm font-semibold text-neutral-800"
+                                      className="mt-2 block w-full p-2.5 border border-slate-700 rounded-xl text-xs bg-slate-800/50 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all shadow-md font-semibold text-white"
                                       value={fullName}
                                       onChange={(e) => setFullName(e.target.value)}
                                     />
@@ -744,7 +749,7 @@ export default function StudentPortal() {
                                 <div className="md:col-span-5">
                                   {submissionType === 'file' ? (
                                     <>
-                                      <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider">
+                                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
                                         Unggah File Tugas (Maks {uploadLimitMb} MB)
                                       </label>
                                       <div
@@ -753,12 +758,12 @@ export default function StudentPortal() {
                                         onDragLeave={handleDrag}
                                         onDrop={handleDrop}
                                         onClick={() => fileInputRef.current?.click()}
-                                        className={`mt-2 border-2 border-dashed rounded-xl p-2.5 text-center cursor-pointer transition-all duration-200 flex items-center justify-center gap-2 shadow-sm ${
+                                        className={`mt-2 border-2 border-dashed rounded-xl p-2.5 text-center cursor-pointer transition-all duration-200 flex items-center justify-center gap-2 shadow-md ${
                                           dragActive
-                                            ? 'border-neutral-950 bg-neutral-50'
+                                            ? 'border-sky-500 bg-sky-500/10'
                                             : file
-                                            ? 'border-emerald-500 bg-emerald-50/10'
-                                            : 'border-neutral-300 hover:border-neutral-400 bg-neutral-50/10 hover:bg-neutral-50/30'
+                                            ? 'border-emerald-500 bg-emerald-950/20'
+                                            : 'border-slate-700 hover:border-slate-500 bg-slate-800/30 hover:bg-slate-800/60'
                                         }`}
                                       >
                                         <input
@@ -770,13 +775,13 @@ export default function StudentPortal() {
                                         />
                                         {file ? (
                                           <div className="flex items-center gap-1.5 truncate text-left">
-                                            <FileText className="w-4 h-4 text-emerald-600 shrink-0" />
-                                            <span className="font-extrabold text-neutral-950 text-xs truncate max-w-[150px]">{file.name}</span>
-                                            <span className="text-[9px] text-neutral-400 font-bold whitespace-nowrap">({formatBytes(file.size)})</span>
+                                            <FileText className="w-4 h-4 text-emerald-400 shrink-0" />
+                                            <span className="font-extrabold text-white text-xs truncate max-w-[150px]">{file.name}</span>
+                                            <span className="text-[9px] text-slate-400 font-bold whitespace-nowrap">({formatBytes(file.size)})</span>
                                           </div>
                                         ) : (
-                                          <div className="flex items-center gap-1.5 text-neutral-500">
-                                            <Upload className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+                                          <div className="flex items-center gap-1.5 text-slate-400">
+                                            <Upload className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                                             <span className="text-xs font-medium">Klik / seret file tugas Anda</span>
                                           </div>
                                         )}
@@ -784,19 +789,19 @@ export default function StudentPortal() {
                                     </>
                                   ) : (
                                     <>
-                                      <label htmlFor="videoLinkInput" className="block text-xs font-bold text-neutral-500 uppercase tracking-wider">
+                                      <label htmlFor="videoLinkInput" className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
                                         Tautan Video (YouTube / Google Drive)
                                       </label>
-                                      <div className="relative mt-2 rounded-xl shadow-sm">
+                                      <div className="relative mt-2 rounded-xl shadow-md">
                                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                          <Link2 className="h-3.5 w-3.5 text-neutral-400" />
+                                          <Link2 className="h-3.5 w-3.5 text-slate-500" />
                                         </div>
                                         <input
                                           id="videoLinkInput"
                                           type="url"
                                           required
                                           placeholder="https://www.youtube.com/watch?v=..."
-                                          className="block w-full pl-9 pr-3 py-2.5 border border-neutral-300 rounded-xl text-xs bg-neutral-50/20 focus:outline-none focus:ring-2 focus:ring-neutral-950 transition-all font-semibold text-neutral-800"
+                                          className="block w-full pl-9 pr-3 py-2.5 border border-slate-700 rounded-xl text-xs bg-slate-800/50 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all font-semibold text-white"
                                           value={linkUrl}
                                           onChange={(e) => setLinkUrl(e.target.value)}
                                         />
@@ -809,7 +814,7 @@ export default function StudentPortal() {
                                   <button
                                     type="submit"
                                     disabled={submitting}
-                                    className="w-full py-2.5 bg-neutral-950 hover:bg-neutral-800 disabled:bg-neutral-200 disabled:text-neutral-400 disabled:cursor-not-allowed text-white font-bold text-xs rounded-xl transition-all duration-200 shadow-md flex items-center justify-center gap-1.5 cursor-pointer hover:-translate-y-0.5 active:translate-y-0"
+                                    className="w-full py-2.5 bg-sky-600 hover:bg-sky-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-bold text-xs rounded-xl transition-all duration-200 shadow-md flex items-center justify-center gap-1.5 cursor-pointer hover:-translate-y-0.5 active:translate-y-0"
                                   >
                                     {submissionType === 'link' ? <Link2 className="w-3.5 h-3.5" /> : <Upload className="w-3.5 h-3.5" />}
                                     {submitting ? 'Mengirim...' : 'Kumpulkan'}
@@ -831,7 +836,7 @@ export default function StudentPortal() {
       </main>
 
       {/* Footer credits */}
-      <footer className="border-t border-neutral-200/80 bg-white py-8 text-center text-xs text-neutral-400 mt-12 shadow-sm/5">
+      <footer className="border-t border-slate-900 bg-slate-950/60 py-8 text-center text-xs text-slate-500 mt-12 shadow-lg">
         <p className="max-w-2xl mx-auto px-4 font-medium leading-relaxed">&copy; {new Date().getFullYear()} EduClass</p>
       </footer>
     </div>
