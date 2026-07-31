@@ -213,7 +213,7 @@ export class ApiClient {
       throw new Error('Not in Live Mode');
     }
 
-    const publicActions = ['login', 'getPublicSettings', 'getPublicSections', 'getPublicInstructions', 'submitAssignment', 'getClasses'];
+    const publicActions = ['login', 'getPublicSettings', 'getPublicSections', 'getPublicInstructions', 'submitAssignment', 'getClasses', 'getStudents'];
     const sessionToken = localStorage.getItem('educlass_session');
 
     if (!publicActions.includes(action) && !sessionToken) {
