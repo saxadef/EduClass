@@ -246,10 +246,13 @@ export function getYoutubeEmbedUrl(url: string): string {
  */
 export function encodeSubmissionLink(url: string, studentName: string): string {
   if (!url) return '';
-  // Convert URL to Base64 and make it safe for file systems by substituting '/' and '+'
-  const safeBase64 = btoa(url).replace(/\//g, '_').replace(/\+/g, '-').replace(/=/g, '');
+  // Convert URL to hex representation (contains only 0-9a-f, absolutely no underscores)
+  let hexUrl = '';
+  for (let i = 0; i < url.length; i++) {
+    hexUrl += url.charCodeAt(i).toString(16).padStart(2, '0');
+  }
   const safeName = studentName.replace(/[^a-zA-Z0-9]/g, '_');
-  return `LINK_SUB_${safeBase64}_${safeName}.docx`;
+  return `LINK_SUB_${hexUrl}_${safeName}.docx`;
 }
 
 /**
@@ -257,20 +260,71 @@ export function encodeSubmissionLink(url: string, studentName: string): string {
  */
 export function decodeSubmissionLink(filename: string): string {
   if (!filename || !filename.startsWith('LINK_SUB_')) return '';
-  const parts = filename.split('_');
-  if (parts.length < 3) return '';
-  const safeBase64 = parts[2];
-  // Restore base64 padding and characters
-  let base64 = safeBase64.replace(/_/g, '/').replace(/-/g, '+');
-  while (base64.length % 4) {
-    base64 += '=';
+  
+  // Remove prefix and extension
+  let inner = filename.replace('LINK_SUB_', '');
+  const dotIdx = inner.lastIndexOf('.');
+  if (dotIdx !== -1) {
+    inner = inner.substring(0, dotIdx);
   }
-  try {
-    return atob(base64);
-  } catch (e) {
-    console.error('Failed to decode link from filename:', e);
-    return '';
+  
+  // 1. First, try Hex decoding (our new, robust method)
+  // Split by '_' - the first part should be the Hex URL
+  const firstUnderscore = inner.indexOf('_');
+  const possibleHex = firstUnderscore !== -1 ? inner.substring(0, firstUnderscore) : inner;
+  if (/^[0-9a-fA-F]+$/.test(possibleHex) && possibleHex.length % 2 === 0) {
+    try {
+      let decodedHex = '';
+      for (let i = 0; i < possibleHex.length; i += 2) {
+        decodedHex += String.fromCharCode(parseInt(possibleHex.substring(i, i + 2), 16));
+      }
+      if (decodedHex.startsWith('http://') || decodedHex.startsWith('https://')) {
+        return decodedHex;
+      }
+    } catch (e) {
+      // Ignore and fall through to base64
+    }
   }
+  
+  // 2. Backward compatibility: Base64 decoding
+  // Try all possible splits from longest prefix to shortest to handle base64 with underscores
+  const parts = inner.split('_');
+  for (let i = parts.length; i >= 1; i--) {
+    const candidateBase64 = parts.slice(0, i).join('_');
+    if (!candidateBase64) continue;
+    
+    // Restore Base64 padding and characters
+    let base64 = candidateBase64.replace(/_/g, '/').replace(/-/g, '+');
+    while (base64.length % 4) {
+      base64 += '=';
+    }
+    
+    try {
+      const decoded = atob(base64);
+      if (decoded.startsWith('http://') || decoded.startsWith('https://')) {
+        return decoded;
+      }
+    } catch (e) {
+      // Continue trying
+    }
+  }
+  
+  // Fallback to legacy decoding
+  const legacyParts = filename.split('_');
+  if (legacyParts.length >= 3) {
+    const safeBase64 = legacyParts[2];
+    let base64 = safeBase64.replace(/_/g, '/').replace(/-/g, '+');
+    while (base64.length % 4) {
+      base64 += '=';
+    }
+    try {
+      return atob(base64);
+    } catch (e) {
+      // Ignore
+    }
+  }
+  
+  return '';
 }
 
 
