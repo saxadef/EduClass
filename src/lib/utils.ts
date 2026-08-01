@@ -249,7 +249,7 @@ export function encodeSubmissionLink(url: string, studentName: string): string {
   // Convert URL to Base64 and make it safe for file systems by substituting '/' and '+'
   const safeBase64 = btoa(url).replace(/\//g, '_').replace(/\+/g, '-').replace(/=/g, '');
   const safeName = studentName.replace(/[^a-zA-Z0-9]/g, '_');
-  return `LINK_SUB_${safeBase64}_${safeName}.txt`;
+  return `LINK_SUB_${safeBase64}_${safeName}.docx`;
 }
 
 /**
