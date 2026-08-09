@@ -576,48 +576,98 @@ var TelegramService = {
       .replace(/>/g, '&gt;');
   },
 
-  sendNotification: function(text) {
+  getSettingValue: function(key) {
     try {
       var settings = SpreadsheetService.readAllRows(Config.SHEET_SETTINGS);
-      var botTokenSetting = settings.find(function(s) { 
-        return s.setting_key && String(s.setting_key).trim() === 'TELEGRAM_BOT_TOKEN'; 
+      var match = settings.find(function(s) { 
+        return s.setting_key && String(s.setting_key).trim().toUpperCase() === String(key).trim().toUpperCase(); 
       });
-      var chatIdSetting = settings.find(function(s) { 
-        return s.setting_key && String(s.setting_key).trim() === 'TELEGRAM_CHAT_ID'; 
-      });
+      if (match && match.setting_value !== undefined && match.setting_value !== null && String(match.setting_value).trim() !== '') {
+        return String(match.setting_value).trim();
+      }
+    } catch (e) {
+      Logger.log('Error reading setting ' + key + ': ' + e.message);
+    }
+    try {
+      var propVal = PropertiesService.getScriptProperties().getProperty(key);
+      if (propVal) return String(propVal).trim();
+    } catch (e) {}
+    return '';
+  },
 
-      var token = botTokenSetting && botTokenSetting.setting_value ? String(botTokenSetting.setting_value).trim() : '';
-      var chatId = chatIdSetting && chatIdSetting.setting_value ? String(chatIdSetting.setting_value).replace(/\\.0+$/, '').trim() : '';
+  sendNotification: function(text) {
+    try {
+      var token = this.getSettingValue('TELEGRAM_BOT_TOKEN');
+      var chatId = this.getSettingValue('TELEGRAM_CHAT_ID');
+
+      if (chatId) {
+        chatId = chatId.replace(/\\.0+$/, '').trim();
+      }
 
       if (!token || !chatId) {
-        Logger.log('Telegram notice: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is missing in Settings.');
-        return;
+        Logger.log('Telegram notice: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is missing in Settings sheet or Script Properties.');
+        return false;
       }
 
       var url = 'https://api.telegram.org/bot' + token + '/sendMessage';
-      var payload = {
+      
+      // Attempt 1: HTML Parse Mode
+      var payloadHtml = {
         'chat_id': chatId,
         'text': text,
-        'parse_mode': 'HTML'
+        'parse_mode': 'HTML',
+        'disable_web_page_preview': false
       };
 
-      var options = {
+      var optionsHtml = {
         'method': 'post',
         'contentType': 'application/json',
-        'payload': JSON.stringify(payload),
+        'payload': JSON.stringify(payloadHtml),
         'muteHttpExceptions': true
       };
 
-      var response = UrlFetchApp.fetch(url, options);
+      var response = UrlFetchApp.fetch(url, optionsHtml);
       var code = response.getResponseCode();
       var responseText = response.getContentText();
-      Logger.log('Telegram dispatch status [' + code + ']: ' + responseText);
+      Logger.log('Telegram HTML send status [' + code + ']: ' + responseText);
+
+      // Attempt 2: If Telegram rejected HTML (code !== 200), retry as Plain Text
+      if (code !== 200) {
+        var plainText = text
+          .replace(/<b>/g, '')
+          .replace(/<\\/b>/g, '')
+          .replace(/<i>/g, '')
+          .replace(/<\\/i>/g, '')
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>');
+
+        var payloadPlain = {
+          'chat_id': chatId,
+          'text': plainText,
+          'disable_web_page_preview': false
+        };
+
+        var optionsPlain = {
+          'method': 'post',
+          'contentType': 'application/json',
+          'payload': JSON.stringify(payloadPlain),
+          'muteHttpExceptions': true
+        };
+
+        var retryResp = UrlFetchApp.fetch(url, optionsPlain);
+        var retryCode = retryResp.getResponseCode();
+        Logger.log('Telegram Plain fallback status [' + retryCode + ']: ' + retryResp.getContentText());
+        return retryCode === 200;
+      }
+
+      return code === 200;
     } catch (err) {
       Logger.log('Telegram Service Error: ' + err.message);
+      return false;
     }
   }
 };`,
-
     'AuthService.gs': `// AuthService.gs
 // Manages authentication validation and active cache session management.
 
