@@ -774,10 +774,10 @@ export class ApiClient {
   // Mock Telegram sender
   private static async triggerMockTelegram(sub: Submission): Promise<void> {
     const settings = this.getMockSettings();
-    const token = settings.TELEGRAM_BOT_TOKEN;
-    const chatId = settings.TELEGRAM_CHAT_ID;
+    const token = (settings.TELEGRAM_BOT_TOKEN || '').trim();
+    const chatId = String(settings.TELEGRAM_CHAT_ID || '').replace(/\.0+$/, '').trim();
 
-    const formattedTime = new Date(sub.timestamp).toLocaleString('en-GB', {
+    const formattedTime = new Date(sub.timestamp).toLocaleString('id-ID', {
       day: '2-digit',
       month: 'long',
       year: 'numeric',
@@ -785,7 +785,29 @@ export class ApiClient {
       minute: '2-digit'
     });
 
-    const text = `New Submission\n\nName:\n${sub.student_name}\n\nClass:\n${sub.class_name}\n\nAssignment:\n${sub.section_name}\n\nFile:\n${sub.original_filename}\n\nTime:\n${formattedTime}`;
+    const esc = (str: string) => (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    let fileOrLinkInfo = `Nama Berkas:\n${esc(sub.original_filename)}`;
+    if (sub.original_filename && sub.original_filename.startsWith('LINK_SUB_')) {
+      try {
+        let inner = sub.original_filename.replace('LINK_SUB_', '');
+        const dotIdx = inner.lastIndexOf('.');
+        if (dotIdx !== -1) inner = inner.substring(0, dotIdx);
+        const firstUnderscore = inner.indexOf('_');
+        const possibleHex = firstUnderscore !== -1 ? inner.substring(0, firstUnderscore) : inner;
+        if (/^[0-9a-fA-F]+$/.test(possibleHex) && possibleHex.length % 2 === 0) {
+          let decodedLink = '';
+          for (let i = 0; i < possibleHex.length; i += 2) {
+            decodedLink += String.fromCharCode(parseInt(possibleHex.substring(i, i + 2), 16));
+          }
+          if (decodedLink.startsWith('http://') || decodedLink.startsWith('https://')) {
+            fileOrLinkInfo = `Tautan / Link Video:\n${esc(decodedLink)}`;
+          }
+        }
+      } catch (e) {}
+    }
+
+    const text = `<b>Tugas Siswa Baru Dikirim</b>\n\nSiswa:\n${esc(sub.student_name)}\n\nKelas:\n${esc(sub.class_name)}\n\nPertemuan/Tugas:\n${esc(sub.section_name)}\n\n${fileOrLinkInfo}\n\nWaktu:\n${esc(formattedTime)}`;
 
     console.log('Sending Notification to Telegram Bot:', text);
 
@@ -795,7 +817,7 @@ export class ApiClient {
         await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chat_id: chatId, text: text }),
+          body: JSON.stringify({ chat_id: chatId, text: text, parse_mode: 'HTML' }),
         });
       } catch (err) {
         console.warn('Mock Telegram failed (non-blocking as per spec):', err);

@@ -568,16 +568,31 @@ var DriveService = {
 // Manages outgoing Telegram notification dispatches.
 
 var TelegramService = {
+  escapeHtml: function(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  },
+
   sendNotification: function(text) {
     try {
       var settings = SpreadsheetService.readAllRows(Config.SHEET_SETTINGS);
-      var botTokenSetting = settings.find(function(s) { return s.setting_key === 'TELEGRAM_BOT_TOKEN'; });
-      var chatIdSetting = settings.find(function(s) { return s.setting_key === 'TELEGRAM_CHAT_ID'; });
+      var botTokenSetting = settings.find(function(s) { 
+        return s.setting_key && String(s.setting_key).trim() === 'TELEGRAM_BOT_TOKEN'; 
+      });
+      var chatIdSetting = settings.find(function(s) { 
+        return s.setting_key && String(s.setting_key).trim() === 'TELEGRAM_CHAT_ID'; 
+      });
 
-      var token = botTokenSetting ? botTokenSetting.setting_value : '';
-      var chatId = chatIdSetting ? chatIdSetting.setting_value : '';
+      var token = botTokenSetting && botTokenSetting.setting_value ? String(botTokenSetting.setting_value).trim() : '';
+      var chatId = chatIdSetting && chatIdSetting.setting_value ? String(chatIdSetting.setting_value).replace(/\\.0+$/, '').trim() : '';
 
-      if (!token || !chatId) return;
+      if (!token || !chatId) {
+        Logger.log('Telegram notice: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is missing in Settings.');
+        return;
+      }
 
       var url = 'https://api.telegram.org/bot' + token + '/sendMessage';
       var payload = {
@@ -593,9 +608,12 @@ var TelegramService = {
         'muteHttpExceptions': true
       };
 
-      UrlFetchApp.fetch(url, options);
+      var response = UrlFetchApp.fetch(url, options);
+      var code = response.getResponseCode();
+      var responseText = response.getContentText();
+      Logger.log('Telegram dispatch status [' + code + ']: ' + responseText);
     } catch (err) {
-      Logger.log('Telegram failed silently: ' + err.message);
+      Logger.log('Telegram Service Error: ' + err.message);
     }
   }
 };`,
@@ -831,7 +849,7 @@ var SubmissionService = {
 
     // 3. VALIDASI EKSTENSI BERKAS YANG DIIZINKAN
     var ext = payload.fileName.split('.').pop().toLowerCase();
-    var allowedExtensions = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'webp', 'gif'];
+    var allowedExtensions = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'txt', 'csv', 'zip', 'rar', 'mp4', 'mkv', 'mov', 'mp3', 'wav'];
     if (allowedExtensions.indexOf(ext) === -1) {
       throw new Error('Format berkas (. ' + ext + ') tidak didukung.');
     }
@@ -871,11 +889,32 @@ var SubmissionService = {
 
     // 6. KIRIM NOTIFIKASI TELEGRAM OTOMATIS (FAIL-SAFE)
     var formattedTime = new Date(newSubmission.timestamp).toLocaleString('id-ID');
+
+    var fileOrLinkInfo = 'Nama Berkas:\\n' + newSubmission.original_filename;
+    if (newSubmission.original_filename && newSubmission.original_filename.indexOf('LINK_SUB_') === 0) {
+      try {
+        var inner = newSubmission.original_filename.replace('LINK_SUB_', '');
+        var dotIdx = inner.lastIndexOf('.');
+        if (dotIdx !== -1) inner = inner.substring(0, dotIdx);
+        var firstUnderscore = inner.indexOf('_');
+        var possibleHex = firstUnderscore !== -1 ? inner.substring(0, firstUnderscore) : inner;
+        if (/^[0-9a-fA-F]+$/.test(possibleHex) && possibleHex.length % 2 === 0) {
+          var decodedLink = '';
+          for (var i = 0; i < possibleHex.length; i += 2) {
+            decodedLink += String.fromCharCode(parseInt(possibleHex.substring(i, i + 2), 16));
+          }
+          if (decodedLink.indexOf('http://') === 0 || decodedLink.indexOf('https://') === 0) {
+            fileOrLinkInfo = 'Tautan / Link Video:\\n' + decodedLink;
+          }
+        }
+      } catch(e) {}
+    }
+
     var tgText = '<b>Tugas Siswa Baru Dikirim</b>\\n\\n' +
                  'Siswa:\\n' + newSubmission.student_name + '\\n\\n' +
                  'Kelas:\\n' + newSubmission.class_name + '\\n\\n' +
                  'Pertemuan/Tugas:\\n' + newSubmission.section_name + '\\n\\n' +
-                 'Nama Berkas:\\n' + newSubmission.original_filename + '\\n\\n' +
+                 fileOrLinkInfo + '\\n\\n' +
                  'Waktu:\\n' + formattedTime;
 
     TelegramService.sendNotification(tgText);
@@ -1044,7 +1083,7 @@ function doPost(e) {
     }
 
     // Define public actions (can be called without admin session token)
-    var publicActions = ['login', 'getPublicSettings', 'getPublicSections', 'getPublicInstructions', 'submitAssignment', 'getClasses'];
+    var publicActions = ['login', 'getPublicSettings', 'getPublicSections', 'getPublicInstructions', 'submitAssignment', 'getClasses', 'getStudents'];
 
     var isPublic = publicActions.indexOf(action) > -1;
     var adminUser = null;

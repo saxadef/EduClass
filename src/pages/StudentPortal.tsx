@@ -770,7 +770,7 @@ export default function StudentPortal() {
                                           ref={fileInputRef}
                                           type="file"
                                           className="hidden"
-                                          accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.jpeg,.png,.webp,.gif"
+                                          accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.jpeg,.png,.webp,.gif,.txt,.csv,.zip,.rar,.mp4,.mkv,.mov,.mp3,.wav"
                                           onChange={handleFileInputChange}
                                         />
                                         {file ? (
