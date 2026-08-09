@@ -237,7 +237,7 @@ var SpreadsheetService = {
     return true;
   },
 
-  // Update a row object based on primary key
+  // Update a row object based on primary key (UPSERT: auto-creates row if missing)
   updateRow: function(sheetName, keyColumnName, keyValue, updateObj) {
     var sheet = this.getSheet(sheetName);
     var rows = this.readAllRows(sheetName);
@@ -246,7 +246,12 @@ var SpreadsheetService = {
     });
 
     if (!foundRow) {
-      throw new Error('Record with ' + keyColumnName + '=' + keyValue + ' not found in sheet ' + sheetName);
+      var newRecord = {};
+      newRecord[keyColumnName] = keyValue;
+      for (var k in updateObj) {
+        newRecord[k] = updateObj[k];
+      }
+      return this.appendRow(sheetName, newRecord);
     }
 
     var rowIndex = foundRow._rowIndex;
@@ -578,90 +583,115 @@ var TelegramService = {
 
   getSettingValue: function(key) {
     try {
+      var propVal = PropertiesService.getScriptProperties().getProperty(key);
+      if (propVal && String(propVal).trim() !== '') return String(propVal).trim();
+    } catch (e) {}
+
+    try {
       var settings = SpreadsheetService.readAllRows(Config.SHEET_SETTINGS);
-      var match = settings.find(function(s) { 
-        return s.setting_key && String(s.setting_key).trim().toUpperCase() === String(key).trim().toUpperCase(); 
-      });
-      if (match && match.setting_value !== undefined && match.setting_value !== null && String(match.setting_value).trim() !== '') {
-        return String(match.setting_value).trim();
+      if (settings && settings.length) {
+        for (var i = 0; i < settings.length; i++) {
+          var row = settings[i];
+          if (row.setting_key && String(row.setting_key).trim().toUpperCase() === String(key).trim().toUpperCase()) {
+            if (row.setting_value !== undefined && row.setting_value !== null && String(row.setting_value).trim() !== '') {
+              return String(row.setting_value).trim();
+            }
+          }
+          var keys = Object.keys(row);
+          for (var k = 0; k < keys.length; k++) {
+            if (String(row[keys[k]]).trim().toUpperCase() === String(key).trim().toUpperCase()) {
+              if (row.setting_value) return String(row.setting_value).trim();
+              if (row.Value) return String(row.Value).trim();
+              if (row.value) return String(row.value).trim();
+            }
+          }
+        }
       }
     } catch (e) {
       Logger.log('Error reading setting ' + key + ': ' + e.message);
     }
-    try {
-      var propVal = PropertiesService.getScriptProperties().getProperty(key);
-      if (propVal) return String(propVal).trim();
-    } catch (e) {}
     return '';
   },
 
   sendNotification: function(text) {
     try {
       var token = this.getSettingValue('TELEGRAM_BOT_TOKEN');
-      var chatId = this.getSettingValue('TELEGRAM_CHAT_ID');
+      var rawChatId = this.getSettingValue('TELEGRAM_CHAT_ID');
 
-      if (chatId) {
-        chatId = chatId.replace(/\\.0+$/, '').trim();
+      if (!token || !rawChatId) {
+        Logger.log('Telegram notice: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is missing.');
+        return false;
       }
 
-      if (!token || !chatId) {
-        Logger.log('Telegram notice: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is missing in Settings sheet or Script Properties.');
+      var chatIds = String(rawChatId)
+        .split(/[,;\\n\\s]+/)
+        .map(function(id) {
+          var clean = id.trim();
+          if (clean.indexOf('.0') !== -1) clean = clean.split('.0')[0];
+          return clean;
+        })
+        .filter(function(id) { return id.length > 0; });
+
+      if (chatIds.length === 0) {
+        Logger.log('Telegram notice: No valid Chat IDs found.');
         return false;
       }
 
       var url = 'https://api.telegram.org/bot' + token + '/sendMessage';
-      
-      // Attempt 1: HTML Parse Mode
-      var payloadHtml = {
-        'chat_id': chatId,
-        'text': text,
-        'parse_mode': 'HTML',
-        'disable_web_page_preview': false
-      };
+      var allSuccess = true;
 
-      var optionsHtml = {
-        'method': 'post',
-        'contentType': 'application/json',
-        'payload': JSON.stringify(payloadHtml),
-        'muteHttpExceptions': true
-      };
+      for (var i = 0; i < chatIds.length; i++) {
+        var currentChatId = chatIds[i];
 
-      var response = UrlFetchApp.fetch(url, optionsHtml);
-      var code = response.getResponseCode();
-      var responseText = response.getContentText();
-      Logger.log('Telegram HTML send status [' + code + ']: ' + responseText);
-
-      // Attempt 2: If Telegram rejected HTML (code !== 200), retry as Plain Text
-      if (code !== 200) {
-        var plainText = text
-          .replace(/<b>/g, '')
-          .replace(/<\\/b>/g, '')
-          .replace(/<i>/g, '')
-          .replace(/<\\/i>/g, '')
-          .replace(/&amp;/g, '&')
-          .replace(/&lt;/g, '<')
-          .replace(/&gt;/g, '>');
-
-        var payloadPlain = {
-          'chat_id': chatId,
-          'text': plainText,
+        // Attempt 1: HTML Parse Mode
+        var payloadHtml = {
+          'chat_id': currentChatId,
+          'text': text,
+          'parse_mode': 'HTML',
           'disable_web_page_preview': false
         };
 
-        var optionsPlain = {
+        var optionsHtml = {
           'method': 'post',
           'contentType': 'application/json',
-          'payload': JSON.stringify(payloadPlain),
+          'payload': JSON.stringify(payloadHtml),
           'muteHttpExceptions': true
         };
 
-        var retryResp = UrlFetchApp.fetch(url, optionsPlain);
-        var retryCode = retryResp.getResponseCode();
-        Logger.log('Telegram Plain fallback status [' + retryCode + ']: ' + retryResp.getContentText());
-        return retryCode === 200;
+        var response = UrlFetchApp.fetch(url, optionsHtml);
+        var code = response.getResponseCode();
+        var responseText = response.getContentText();
+        Logger.log('Telegram HTML send status for [' + currentChatId + '] [' + code + ']: ' + responseText);
+
+        // Attempt 2: If Telegram rejected HTML (code !== 200), retry as Plain Text
+        if (code !== 200) {
+          var plainText = text
+            .replace(/<[^>]+>/g, '')
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>');
+
+          var payloadPlain = {
+            'chat_id': currentChatId,
+            'text': plainText,
+            'disable_web_page_preview': false
+          };
+
+          var optionsPlain = {
+            'method': 'post',
+            'contentType': 'application/json',
+            'payload': JSON.stringify(payloadPlain),
+            'muteHttpExceptions': true
+          };
+
+          var retryResp = UrlFetchApp.fetch(url, optionsPlain);
+          var retryCode = retryResp.getResponseCode();
+          Logger.log('Telegram Plain fallback status for [' + currentChatId + '] [' + retryCode + ']: ' + retryResp.getContentText());
+          if (retryCode !== 200) allSuccess = false;
+        }
       }
 
-      return code === 200;
+      return allSuccess;
     } catch (err) {
       Logger.log('Telegram Service Error: ' + err.message);
       return false;
@@ -938,36 +968,40 @@ var SubmissionService = {
     SpreadsheetService.appendRow(Config.SHEET_SUBMISSIONS, newSubmission);
 
     // 6. KIRIM NOTIFIKASI TELEGRAM OTOMATIS (FAIL-SAFE)
-    var formattedTime = new Date(newSubmission.timestamp).toLocaleString('id-ID');
+    try {
+      var formattedTime = new Date(newSubmission.timestamp).toLocaleString('id-ID');
 
-    var fileOrLinkInfo = 'Nama Berkas:\\n' + newSubmission.original_filename;
-    if (newSubmission.original_filename && newSubmission.original_filename.indexOf('LINK_SUB_') === 0) {
-      try {
-        var inner = newSubmission.original_filename.replace('LINK_SUB_', '');
-        var dotIdx = inner.lastIndexOf('.');
-        if (dotIdx !== -1) inner = inner.substring(0, dotIdx);
-        var firstUnderscore = inner.indexOf('_');
-        var possibleHex = firstUnderscore !== -1 ? inner.substring(0, firstUnderscore) : inner;
-        if (/^[0-9a-fA-F]+$/.test(possibleHex) && possibleHex.length % 2 === 0) {
-          var decodedLink = '';
-          for (var i = 0; i < possibleHex.length; i += 2) {
-            decodedLink += String.fromCharCode(parseInt(possibleHex.substring(i, i + 2), 16));
+      var fileOrLinkInfo = 'Nama Berkas:\n' + newSubmission.original_filename;
+      if (newSubmission.original_filename && newSubmission.original_filename.indexOf('LINK_SUB_') === 0) {
+        try {
+          var inner = newSubmission.original_filename.replace('LINK_SUB_', '');
+          var dotIdx = inner.lastIndexOf('.');
+          if (dotIdx !== -1) inner = inner.substring(0, dotIdx);
+          var firstUnderscore = inner.indexOf('_');
+          var possibleHex = firstUnderscore !== -1 ? inner.substring(0, firstUnderscore) : inner;
+          if (/^[0-9a-fA-F]+$/.test(possibleHex) && possibleHex.length % 2 === 0) {
+            var decodedLink = '';
+            for (var i = 0; i < possibleHex.length; i += 2) {
+              decodedLink += String.fromCharCode(parseInt(possibleHex.substring(i, i + 2), 16));
+            }
+            if (decodedLink.indexOf('http://') === 0 || decodedLink.indexOf('https://') === 0) {
+              fileOrLinkInfo = 'Tautan / Link Video:\n' + decodedLink;
+            }
           }
-          if (decodedLink.indexOf('http://') === 0 || decodedLink.indexOf('https://') === 0) {
-            fileOrLinkInfo = 'Tautan / Link Video:\\n' + decodedLink;
-          }
-        }
-      } catch(e) {}
+        } catch(e) {}
+      }
+
+      var tgText = '<b>Tugas Siswa Baru Dikirim</b>\n\n' +
+                   'Siswa:\n' + newSubmission.student_name + '\n\n' +
+                   'Kelas:\n' + newSubmission.class_name + '\n\n' +
+                   'Pertemuan/Tugas:\n' + newSubmission.section_name + '\n\n' +
+                   fileOrLinkInfo + '\n\n' +
+                   'Waktu:\n' + formattedTime;
+
+      TelegramService.sendNotification(tgText);
+    } catch (notifErr) {
+      Logger.log('Notification trigger notice: ' + notifErr.message);
     }
-
-    var tgText = '<b>Tugas Siswa Baru Dikirim</b>\\n\\n' +
-                 'Siswa:\\n' + newSubmission.student_name + '\\n\\n' +
-                 'Kelas:\\n' + newSubmission.class_name + '\\n\\n' +
-                 'Pertemuan/Tugas:\\n' + newSubmission.section_name + '\\n\\n' +
-                 fileOrLinkInfo + '\\n\\n' +
-                 'Waktu:\\n' + formattedTime;
-
-    TelegramService.sendNotification(tgText);
 
     return newSubmission;
   },
@@ -1223,11 +1257,16 @@ function doPost(e) {
       case 'saveSettings':
         result = ClassService.getClasses(); // Fetch classes just to check db integrity
         var inputSettings = requestData.settings;
+        var scriptProps = PropertiesService.getScriptProperties();
         for (var key in inputSettings) {
+          var valStr = String(inputSettings[key] !== undefined && inputSettings[key] !== null ? inputSettings[key] : '').trim();
           SpreadsheetService.updateRow(Config.SHEET_SETTINGS, 'setting_key', key, {
-            'setting_value': String(inputSettings[key]),
+            'setting_value': valStr,
             'updated_at': Utils.getTimestamp()
           });
+          if (key === 'TELEGRAM_BOT_TOKEN' || key === 'TELEGRAM_CHAT_ID') {
+            scriptProps.setProperty(key, valStr);
+          }
         }
         result = true;
         break;
